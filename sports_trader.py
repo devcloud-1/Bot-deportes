@@ -462,6 +462,56 @@ def run_cycle(live_mode, journal, daily_spent):
     print(f"\n📊 {done} trades | Gastado: ${daily_spent['amount']:.2f} | Requests ahorrados: {cache.hits}")
     return daily_spent
 
+
+# =============================================================================
+# HORARIO ACTIVO (hora Chile = UTC-3)
+# =============================================================================
+
+ACTIVE_WINDOWS = [
+    # (dia_semana, hora_inicio_utc, hora_fin_utc)
+    # Lunes-Jueves: Champions (17:00-20:00 UTC) + NBA/NHL (22:00-04:00 UTC)
+    (0, 17, 20),  # Lunes Champions
+    (0, 22, 28),  # Lunes NBA/NHL (28 = 04:00 del día siguiente)
+    (1, 17, 20),  # Martes Champions
+    (1, 22, 28),  # Martes NBA/NHL
+    (2, 17, 20),  # Miércoles Champions
+    (2, 22, 28),  # Miércoles NBA/NHL
+    (3, 22, 28),  # Jueves NBA/NHL
+    (4, 22, 28),  # Viernes NBA/NHL
+    (5, 17, 21),  # Sábado MLS
+    (5, 23, 28),  # Sábado UFC (cuando hay evento)
+    (6, 17, 21),  # Domingo MLS
+]
+
+def is_active_hour() -> tuple[bool, int]:
+    """Retorna (activo, minutos_hasta_próximo_horario)"""
+    now = datetime.now(timezone.utc)
+    weekday = now.weekday()  # 0=lunes, 6=domingo
+    hour_now = now.hour + now.weekday() * 24  # hora absoluta en la semana
+
+    # Revisar si estamos dentro de alguna ventana
+    for (day, h_start, h_end) in ACTIVE_WINDOWS:
+        abs_start = day * 24 + h_start
+        abs_end   = day * 24 + h_end
+        abs_now   = weekday * 24 + now.hour
+        # Manejar ventanas que cruzan medianoche con wrap semanal
+        if abs_start <= abs_now < abs_end:
+            return True, 0
+
+    # Calcular minutos hasta el próximo horario activo
+    mins_to_next = 99999
+    abs_now = weekday * 24 + now.hour + now.minute / 60
+    for (day, h_start, h_end) in ACTIVE_WINDOWS:
+        abs_start = day * 24 + h_start
+        # Si ya pasó esta semana, sumar una semana
+        if abs_start < abs_now:
+            abs_start += 7 * 24
+        diff_mins = int((abs_start - abs_now) * 60)
+        if diff_mins < mins_to_next:
+            mins_to_next = diff_mins
+
+    return False, mins_to_next
+
 # =============================================================================
 # MAIN
 # =============================================================================
@@ -511,10 +561,16 @@ def main():
     daily_spent = {"date": journal["today"], "amount": 0.0}
 
     if args.loop:
-        print(f"🔄 Loop cada {LOOP_SEC}s. Ctrl+C para parar.\n")
+        print(f"🔄 Loop con horario inteligente (hora Chile). Ctrl+C para parar.\n")
         cycle = 0
         while True:
             try:
+                active, mins_wait = is_active_hour()
+                if not active:
+                    sleep_mins = min(mins_wait, 60)
+                    print(f"😴 Fuera de horario — próxima ventana en ~{mins_wait}min. Durmiendo {sleep_mins}min...")
+                    time.sleep(sleep_mins * 60)
+                    continue
                 daily_spent = run_cycle(live_mode, journal, daily_spent)
                 cycle += 1
                 if cycle % 12 == 0: print_summary(journal)
