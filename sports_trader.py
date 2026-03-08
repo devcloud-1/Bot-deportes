@@ -214,13 +214,21 @@ def search_poly_cached():
         try:
             params = urlencode({"search": term, "active": "true", "closed": "false", "limit": 100})
             data = gamma_get(f"/markets?{params}")
-            for m in (data if isinstance(data, list) else data.get("markets", [])):
+            # Normalizar — Gamma puede devolver lista, dict con markets, o mixto
+            if isinstance(data, list):
+                raw = data
+            elif isinstance(data, dict):
+                raw = data.get("markets", [])
+            else:
+                raw = []
+            for m in raw:
+                if not isinstance(m, dict): continue  # ignorar strings/ints sueltos
                 mid = m.get("id") or m.get("conditionId")
                 if mid and mid not in seen:
                     seen.add(mid)
                     markets.append(m)
-        except:
-            pass
+        except Exception as e:
+            print(f"  Gamma error: {e}")
         time.sleep(0.2)
     cache.set(key, markets, POLY_CACHE_SEC)
     return markets, False
@@ -512,6 +520,7 @@ def main():
             except KeyboardInterrupt:
                 print("\n👋 Detenido"); print_summary(journal); break
             except Exception as e:
+                import traceback; traceback.print_exc()
                 print(f"⚠️  Error: {e}"); time.sleep(30)
     else:
         run_cycle(live_mode, journal, daily_spent)
