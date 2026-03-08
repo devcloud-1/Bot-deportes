@@ -166,6 +166,9 @@ def get_odds_cached(sport_key, markets):
             "bookmakers": ",".join(REFERENCE_BOOKS),
         })
         data = odds_get(f"/sports/{sport_key}/odds?{params}")
+        # Fix: filtrar elementos que no sean dicts (a veces la API devuelve strings)
+        if isinstance(data, list):
+            data = [g for g in data if isinstance(g, dict)]
         cache.set(key, data, ODDS_CACHE_SEC)
         return data, False
     except Exception as e:
@@ -223,6 +226,7 @@ def search_poly_cached():
     return markets, False
 
 def parse_market(m):
+    if not isinstance(m, dict): return None  # Fix: ignorar no-dicts
     question = m.get("question","")
     end_date = m.get("endDate") or m.get("end_date_iso")
     yes_price = no_price = None
@@ -275,7 +279,9 @@ def norm(name):
 def match_game(question, games):
     q = question.lower()
     for g in games:
+        if not isinstance(g, dict): continue  # Fix: ignorar elementos que no sean dicts
         h, a = norm(g.get("home_team","")), norm(g.get("away_team",""))
+        if not h or not a: continue
         if (h in q or any(w in q for w in h.split() if len(w)>4)) and \
            (a in q or any(w in q for w in a.split() if len(w)>4)):
             return g
@@ -387,6 +393,7 @@ def run_cycle(live_mode, journal, daily_spent):
 
         for pm in poly_markets:
             info = parse_market(pm)
+            if not info: continue  # Fix: parse_market puede devolver None
             if not info["yes_price"] or not info["no_price"]: continue
             sl = info["seconds_left"]
             if sl and (sl < 300 or sl > 86400 * 5): continue
