@@ -1,1 +1,1 @@
-worker: python fastloop_trader.py --live --loop --quiet
+worker: sports_trader.py --live --loop --quiet
