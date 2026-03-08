@@ -239,12 +239,14 @@ def parse_market(m):
     end_date = m.get("endDate") or m.get("end_date_iso")
     yes_price = no_price = None
     for t in m.get("tokens", []):
+        if not isinstance(t, dict): continue  # Fix: tokens puede tener strings
         name = (t.get("outcome") or "").upper()
         price = float(t.get("price") or 0)
         if name == "YES": yes_price = price
         elif name == "NO": no_price = price
     if yes_price is None:
         for o in m.get("outcomes", []):
+            if not isinstance(o, dict): continue  # Fix: outcomes puede tener strings
             name = (o.get("value") or o.get("label") or "").upper()
             price = float(o.get("price") or 0)
             if name == "YES": yes_price = price
