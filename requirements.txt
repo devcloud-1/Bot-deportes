@@ -1,0 +1,5 @@
+requests
+simmer-sdk
+python-dotenv
+pandas
+numpy

@@ -1,0 +1,16 @@
+# Sports Arbitrage Bot — Variables de Entorno
+# Copia esto en Railway → Settings → Variables
+
+# OBLIGATORIO
+SIMMER_API_KEY=sk-...                    # Tu key de simmer.markets
+ODDS_API_KEY=c2262242e1326d83c6d8b33d1fca2e62   # The Odds API key
+
+# ESTRATEGIA (opcionales, estos son los defaults)
+SPORTS_DAILY_BUDGET=50.0                 # Budget diario máximo en USD
+SPORTS_MAX_PER_TRADE=15.0               # Máximo por trade individual
+SPORTS_MIN_EDGE=0.08                     # Edge mínimo vs bookmakers (8%)
+SPORTS_LOOP_SEC=60                       # Segundos entre ciclos
+
+# SISTEMA
+HEALTHCHECK_PORT=8080
+LOG_FORMAT=json
